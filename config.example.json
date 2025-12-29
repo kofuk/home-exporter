@@ -1,0 +1,13 @@
+{
+    "hwMac": "",
+    "wifi": {
+      "ssid": "",
+      "password": ""
+    },
+    "prometheus": {
+      "remoteWriteEndpoint": "",
+      "username": "",
+      "password": "",
+      "location": ""
+    }
+}

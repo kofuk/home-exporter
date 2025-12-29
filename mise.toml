@@ -1,0 +1,10 @@
+[tools]
+python = '3.13.11'
+uv = '0.9.18'
+
+[tasks.deploy_deps]
+run = 'uv run mpremote mip install github:ttk1/prometheus_remote_write_payload'
+
+[tasks.deploy]
+run = 'uv run mpremote cp main.py config.json ca.der :'
+depends = ['deploy_deps']
