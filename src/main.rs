@@ -1,8 +1,6 @@
 #![no_std]
 #![no_main]
 
-mod thermohygro;
-
 use cyw43_pio::{PioSpi, RM2_CLOCK_DIVIDER};
 use defmt::*;
 use embassy_executor::Spawner;
@@ -10,8 +8,8 @@ use embassy_rp::bind_interrupts;
 use embassy_rp::gpio::{Level, Output};
 use embassy_rp::peripherals::{DMA_CH0, PIO0};
 use embassy_rp::pio::{InterruptHandler, Pio};
+use home_exporter::importer::switchbot::bluetooth::run;
 use static_cell::StaticCell;
-use thermohygro::switchbot::bluetooth::run;
 use trouble_host::prelude::ExternalController;
 use {defmt_rtt as _, panic_probe as _};
 
@@ -31,9 +29,9 @@ async fn main(spawner: Spawner) {
     let p = embassy_rp::init(Default::default());
 
     let (fw, clm, btfw) = {
-        let fw = include_bytes!("../../firmware/43439A0.bin");
-        let clm = include_bytes!("../../firmware/43439A0_clm.bin");
-        let btfw = include_bytes!("../../firmware/43439A0_btfw.bin");
+        let fw = include_bytes!("../firmware/43439A0.bin");
+        let clm = include_bytes!("../firmware/43439A0_clm.bin");
+        let btfw = include_bytes!("../firmware/43439A0_btfw.bin");
         (fw, clm, btfw)
     };
 

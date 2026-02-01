@@ -1,7 +1,11 @@
-use crate::thermohygro::data::ThermoHygroData;
-
 use defmt::info;
 use trouble_host::prelude::*;
+
+#[derive(Debug)]
+pub struct ThermoHygroData {
+    pub temperature: f32,
+    pub humidity: u32,
+}
 
 fn parse_thermo_hygro_data(data: &[u8]) -> Option<ThermoHygroData> {
     if data.len() < 11 {
