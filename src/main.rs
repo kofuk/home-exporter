@@ -1,6 +1,9 @@
 #![no_std]
 #![no_main]
 
+extern crate alloc;
+
+use core::ptr::addr_of_mut;
 use cyw43_pio::{PioSpi, RM2_CLOCK_DIVIDER};
 use defmt::*;
 use embassy_executor::Spawner;
@@ -9,9 +12,23 @@ use embassy_rp::gpio::{Level, Output};
 use embassy_rp::peripherals::{DMA_CH0, PIO0};
 use embassy_rp::pio::{InterruptHandler, Pio};
 use home_exporter::importer::switchbot::bluetooth::run;
+use linked_list_allocator::LockedHeap;
 use static_cell::StaticCell;
 use trouble_host::prelude::ExternalController;
 use {defmt_rtt as _, panic_probe as _};
+
+#[global_allocator]
+static ALLOCATOR: LockedHeap = LockedHeap::empty();
+
+const HEAP_SIZE: usize = 1024 * 8;
+static mut HEAP_MEM: [u8; HEAP_SIZE] = [0; HEAP_SIZE];
+
+fn init_global_allocator() {
+    unsafe {
+        let heap_start = addr_of_mut!(HEAP_MEM) as *mut u8;
+        ALLOCATOR.lock().init(heap_start, HEAP_SIZE);
+    }
+}
 
 bind_interrupts!(struct Irqs {
     PIO0_IRQ_0 => InterruptHandler<PIO0>;
@@ -26,6 +43,8 @@ async fn cyw43_task(
 
 #[embassy_executor::main]
 async fn main(spawner: Spawner) {
+    init_global_allocator();
+
     let p = embassy_rp::init(Default::default());
 
     let (fw, clm, btfw) = {
