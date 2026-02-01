@@ -1,4 +1,4 @@
-use crate::importer::switchbot::adv::ScanHandler;
+use crate::importer::sbmeter::adv::ScanHandler;
 use bt_hci::cmd::le::{LeSetScanEnable, LeSetScanParams};
 use bt_hci::controller::ControllerCmdSync;
 use embassy_futures::join::join;

@@ -1,1 +1,1 @@
-pub mod switchbot;
+pub mod sbmeter;

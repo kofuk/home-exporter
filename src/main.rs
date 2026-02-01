@@ -11,7 +11,7 @@ use embassy_rp::bind_interrupts;
 use embassy_rp::gpio::{Level, Output};
 use embassy_rp::peripherals::{DMA_CH0, PIO0};
 use embassy_rp::pio::{InterruptHandler, Pio};
-use home_exporter::importer::switchbot::bluetooth::run;
+use home_exporter::importer::sbmeter::bluetooth::run;
 use linked_list_allocator::LockedHeap;
 use static_cell::StaticCell;
 use trouble_host::prelude::ExternalController;
