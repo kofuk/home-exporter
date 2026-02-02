@@ -1,11 +1,11 @@
 extern crate alloc;
 
-use crate::repository::{MetricsRepository};
+use crate::repository::MetricsRepository;
 use alloc::rc::Rc;
 use core::cell::RefCell;
 use defmt::info;
+use heapless::{String, Vec};
 use trouble_host::prelude::*;
-use heapless::{String,Vec};
 
 #[derive(Debug)]
 pub struct ThermoHygroData {
@@ -90,21 +90,29 @@ fn extract_local_name(adv_data: &[u8]) -> Option<&str> {
 
 pub struct ScanHandler {
     repository: Rc<RefCell<MetricsRepository>>,
-    filter_addr: Option<BdAddr>
+    filter_addr: Option<BdAddr>,
 }
 
 impl ScanHandler {
     pub fn new(repository: Rc<RefCell<MetricsRepository>>) -> Self {
-        Self { repository, filter_addr: None }
+        Self {
+            repository,
+            filter_addr: None,
+        }
     }
 
     pub fn set_target_mac_addr(&mut self, addr: &String<17>) -> Result<(), &'static str> {
         let parts: Vec<&str, 6> = addr.split(':').collect();
         if parts.len() != 6 {
-            return Err("Error parsing mac address")
+            return Err("Error parsing mac address");
         }
-        let parts: Vec<u8, 6> = parts.iter().map(|e| u8::from_str_radix(e, 16).unwrap_or(0)).collect();
-        self.filter_addr = Some(BdAddr::new([parts[5], parts[4], parts[3], parts[2], parts[1], parts[0]]));
+        let parts: Vec<u8, 6> = parts
+            .iter()
+            .map(|e| u8::from_str_radix(e, 16).unwrap_or(0))
+            .collect();
+        self.filter_addr = Some(BdAddr::new([
+            parts[5], parts[4], parts[3], parts[2], parts[1], parts[0],
+        ]));
 
         Ok(())
     }

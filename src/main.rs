@@ -19,8 +19,8 @@ use embassy_rp::peripherals::{DMA_CH0, PIO0};
 use embassy_rp::pio::{InterruptHandler, Pio};
 #[cfg(feature = "sbmeter")]
 use home_exporter::importer::sbmeter::Importer;
-use home_exporter::repository::MetricsRepository;
 use home_exporter::repository::Config;
+use home_exporter::repository::MetricsRepository;
 use linked_list_allocator::LockedHeap;
 use static_cell::StaticCell;
 use trouble_host::prelude::ExternalController;
@@ -106,9 +106,7 @@ fn load_config() -> Result<Config, serde_json_core::de::Error> {
     let config_data = include_bytes!("../config.json");
     match serde_json_core::from_slice(config_data) {
         Ok((config, _)) => Ok(config),
-        Err(e) => {
-            Err(e)
-        }
+        Err(e) => Err(e),
     }
 }
 

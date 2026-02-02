@@ -33,11 +33,11 @@ where
 
         Importer {
             controller,
-            scan_handler
+            scan_handler,
         }
     }
 
     pub async fn run(self) {
-        run(self.controller, self. scan_handler).await;
+        run(self.controller, self.scan_handler).await;
     }
 }
