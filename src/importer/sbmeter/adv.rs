@@ -117,7 +117,7 @@ impl ScanHandler {
         Ok(())
     }
 
-    fn process_report(&self, addr: BdAddr, rssi: i8, data: &[u8]) {
+    pub fn process_report(&self, addr: BdAddr, rssi: i8, data: &[u8]) {
         let local_name = extract_local_name(data);
 
         let manufacturer_data = match extract_manufacturer_data(data) {
@@ -152,21 +152,6 @@ impl ScanHandler {
             }
             None => {
                 info!("insufficient data length for thermo/hygro");
-            }
-        }
-    }
-}
-
-impl EventHandler for ScanHandler {
-    fn on_adv_reports(&self, reports: bt_hci::param::LeAdvReportsIter) {
-        for report in reports {
-            match report {
-                Ok(report) => {
-                    self.process_report(report.addr, report.rssi, report.data);
-                }
-                Err(e) => {
-                    info!("Error processing advertisement report: {:?}", e);
-                }
             }
         }
     }

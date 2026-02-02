@@ -1,3 +1,5 @@
-mod bluetooth;
+pub mod bluetooth;
 mod net;
-pub mod stack;
+mod stack;
+
+pub use stack::NetworkingStack;

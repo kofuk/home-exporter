@@ -17,7 +17,7 @@ const SCAN_QUEUE_SIZE: usize = 5;
 
 pub struct ScanResult {
     pub addr: BdAddr,
-    pub data: heapless::Vec<u8, 31>, // 広告データ
+    pub data: heapless::Vec<u8, 32>, // 広告データ
     pub rssi: i8,
 }
 
@@ -30,9 +30,9 @@ impl EventHandler for ScanHandler {
         for report in reports {
             match report {
                 Ok(report) => {
-                    let mut data = heapless::Vec::<u8, 31>::new();
+                    let mut data = heapless::Vec::<u8, 32>::new();
                     if let Err(_) = data.extend_from_slice(report.data) {
-                        warn!("Advertisement data too long, dropping extra bytes");
+                        warn!("Advertisement data too long");
                     } else {
                         match self.channel.try_send(ScanResult {
                             addr: report.addr,
@@ -74,6 +74,7 @@ async fn bluetooth_task(
 
 pub struct Bluetooth {
     scanner: Scanner<'static, ExternalController<BtDriver<'static>, 10>, DefaultPacketPool>,
+    scan_channel: &'static Channel<CriticalSectionRawMutex, ScanResult, SCAN_QUEUE_SIZE>,
 }
 
 impl Bluetooth {
@@ -104,10 +105,14 @@ impl Bluetooth {
 
         Bluetooth {
             scanner: Scanner::new(central),
+            scan_channel,
         }
     }
 
-    pub async fn start_scan(&mut self) {
+    pub async fn start_scan<F>(&mut self, mut callback: F)
+    where
+        F: FnMut(ScanResult),
+    {
         let config = ScanConfig {
             active: false,
             interval: Duration::from_secs(3),
@@ -117,7 +122,13 @@ impl Bluetooth {
 
         loop {
             let session = self.scanner.scan(&config).await.unwrap();
-            embassy_time::Timer::after_secs(3).await;
+            while let Ok(result) =
+                embassy_time::with_timeout(Duration::from_secs(3), self.scan_channel.receive())
+                    .await
+            {
+                callback(result);
+            }
+
             drop(session);
             embassy_time::Timer::after_secs(3).await;
         }
