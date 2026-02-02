@@ -56,10 +56,11 @@ linked_list_allocator = "0.10.5"
 embassy-net-driver-channel = "0.3.2"
 
 [features]
-default = ["sbmeter"]
+default = ["sbmeter", "remote-write"]
 bluetooth = []
 wifi = []
 sbmeter = ["bluetooth"]
+remote-write = ["wifi"]
 
 [profile.release]
 # Enable generation of debug symbols even on release builds

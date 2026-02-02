@@ -1,13 +1,19 @@
 {
-    "hwMac": "",
-    "wifi": {
-      "ssid": "",
-      "password": ""
-    },
-    "prometheus": {
-      "remoteWriteEndpoint": "",
-      "username": "",
-      "password": "",
-      "location": ""
+  "importer": {
+    "sbmeter": {
+      "mac_addr": ""
     }
+  },
+  "exporter" : {
+    "location_label": "",
+    "remote_write": {
+      "endpoint": "",
+      "username": "",
+      "password": ""
+    }
+  },
+  "wifi": {
+    "ssid": "",
+    "password": ""
+  }
 }

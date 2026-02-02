@@ -90,7 +90,7 @@ async fn init_net_device(
             cyw43::new_with_bluetooth(state, pwr, spi, fw, btfw).await;
         (net_device, Some(bt_device), control, runner)
     };
-    #[cfg(feature = "wifi")]
+    #[cfg(not(feature = "bluetooth"))]
     let (net_device, bt_device, mut control, runner) = {
         let (net_device, control, runner) = cyw43::new(state, pwr, spi, fw).await;
         (net_device, None, control, runner)
