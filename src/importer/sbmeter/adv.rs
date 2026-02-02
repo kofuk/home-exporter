@@ -1,10 +1,15 @@
+extern crate alloc;
+
+use crate::repository::MetricsRepository;
+use alloc::rc::Rc;
+use core::cell::RefCell;
 use defmt::info;
 use trouble_host::prelude::*;
 
 #[derive(Debug)]
 pub struct ThermoHygroData {
     pub temperature: f32,
-    pub humidity: u32,
+    pub humidity: u8,
 }
 
 fn parse_thermo_hygro_data(data: &[u8]) -> Option<ThermoHygroData> {
@@ -27,7 +32,7 @@ fn parse_thermo_hygro_data(data: &[u8]) -> Option<ThermoHygroData> {
     }
 
     // Humidity
-    let humidity = (humidity_byte & 0x7F) as u32;
+    let humidity = humidity_byte & 0x7F;
 
     Some(ThermoHygroData {
         temperature,
@@ -82,9 +87,15 @@ fn extract_local_name(adv_data: &[u8]) -> Option<&str> {
     None
 }
 
-pub struct ScanHandler;
+pub struct ScanHandler {
+    repository: Rc<RefCell<MetricsRepository>>,
+}
 
 impl ScanHandler {
+    pub fn new(repository: Rc<RefCell<MetricsRepository>>) -> Self {
+        Self { repository }
+    }
+
     fn process_report(&self, addr: BdAddr, rssi: i8, data: &[u8]) {
         let local_name = extract_local_name(data);
 
@@ -115,7 +126,9 @@ impl ScanHandler {
                     "Temperature: {}°C, Humidity: {}%",
                     data.temperature, data.humidity
                 );
-                // TODO
+                let mut repository = self.repository.borrow_mut();
+                repository.set_temperature(data.temperature);
+                repository.set_humidity(data.humidity);
             }
             None => {
                 info!("insufficient data length for thermo/hygro");

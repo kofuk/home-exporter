@@ -1,6 +1,11 @@
+extern crate alloc;
+
 use crate::importer::sbmeter::adv::ScanHandler;
+use crate::repository::MetricsRepository;
+use alloc::rc::Rc;
 use bt_hci::cmd::le::{LeSetScanEnable, LeSetScanParams};
 use bt_hci::controller::ControllerCmdSync;
+use core::cell::RefCell;
 use embassy_futures::join::join;
 use trouble_host::prelude::*;
 
@@ -10,7 +15,7 @@ const CONNECTIONS_MAX: usize = 1;
 /// Max number of L2CAP channels.
 const L2CAP_CHANNELS_MAX: usize = 3; // Signal + att + CoC
 
-pub async fn run<C>(controller: C)
+pub async fn run<C>(controller: C, repository: Rc<RefCell<MetricsRepository>>)
 where
     C: Controller + ControllerCmdSync<LeSetScanParams> + ControllerCmdSync<LeSetScanEnable>,
 {
@@ -31,7 +36,7 @@ where
 
     let mut scanner = Scanner::new(central);
 
-    let handler = ScanHandler;
+    let handler = ScanHandler::new(repository);
 
     let _ = join(runner.run_with_handler(&handler), async {
         loop {

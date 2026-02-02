@@ -3,9 +3,12 @@
 
 extern crate alloc;
 
+use alloc::rc::Rc;
+use core::cell::RefCell;
+use core::future::pending;
 use core::ptr::addr_of_mut;
+use cyw43::Control;
 use cyw43::bluetooth::BtDriver;
-use cyw43::{Control, Runner};
 use cyw43_pio::{PioSpi, RM2_CLOCK_DIVIDER};
 use defmt::*;
 use embassy_executor::Spawner;
@@ -15,7 +18,8 @@ use embassy_rp::gpio::{Level, Output};
 use embassy_rp::peripherals::{DMA_CH0, PIO0};
 use embassy_rp::pio::{InterruptHandler, Pio};
 #[cfg(feature = "sbmeter")]
-use home_exporter::importer::sbmeter as sbmeter_collector;
+use home_exporter::importer::sbmeter::Importer;
+use home_exporter::repository::MetricsRepository;
 use linked_list_allocator::LockedHeap;
 use static_cell::StaticCell;
 use trouble_host::prelude::ExternalController;
@@ -43,6 +47,12 @@ async fn cyw43_task(
     runner: cyw43::Runner<'static, Output<'static>, PioSpi<'static, PIO0, 0, DMA_CH0>>,
 ) -> ! {
     runner.run().await
+}
+
+#[cfg(feature = "sbmeter")]
+#[embassy_executor::task]
+async fn sbmeter_importer_task(importer: Importer<ExternalController<BtDriver<'static>, 10>>) {
+    importer.run().await
 }
 
 #[cfg(any(feature = "bluetooth", feature = "wifi"))]
@@ -95,12 +105,19 @@ async fn init_net_device(
 async fn main(spawner: Spawner) {
     init_global_allocator();
 
-    #[cfg(any(feature = "bluetooth", feature = "wifi"))]
-    let (net_device, bt_device, control) = init_net_device(spawner).await;
+    let repository = Rc::from(RefCell::from(MetricsRepository::new()));
 
-    #[cfg(feature = "bluetooth")]
-    let controller: ExternalController<_, 10> = ExternalController::new(bt_device.unwrap());
+    #[cfg(any(feature = "bluetooth", feature = "wifi"))]
+    let (_net_device, bt_device, _control) = init_net_device(spawner).await;
 
     #[cfg(feature = "sbmeter")]
-    sbmeter_collector::run(controller).await;
+    {
+        let controller: ExternalController<_, 10> = ExternalController::new(bt_device.unwrap());
+        unwrap!(spawner.spawn(sbmeter_importer_task(Importer::new(
+            controller,
+            repository.clone()
+        ))));
+    }
+
+    pending::<()>().await;
 }
