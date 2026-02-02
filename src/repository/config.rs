@@ -18,9 +18,9 @@ pub struct ImporterConfig {
 #[cfg(feature = "remote-write")]
 #[derive(Deserialize)]
 pub struct RemoteWriteConfig {
-    pub endpoint: String<64>,
-    pub username: String<64>,
-    pub password: String<64>,
+    pub endpoint: String<128>,
+    pub username: String<16>,
+    pub password: String<256>,
 }
 
 #[derive(Deserialize)]
