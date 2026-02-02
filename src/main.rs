@@ -20,6 +20,7 @@ use embassy_rp::pio::{InterruptHandler, Pio};
 #[cfg(feature = "sbmeter")]
 use home_exporter::importer::sbmeter::Importer;
 use home_exporter::repository::MetricsRepository;
+use home_exporter::repository::Config;
 use linked_list_allocator::LockedHeap;
 use static_cell::StaticCell;
 use trouble_host::prelude::ExternalController;
@@ -101,9 +102,21 @@ async fn init_net_device(
     return (net_device, bt_device, control);
 }
 
+fn load_config() -> Result<Config, serde_json_core::de::Error> {
+    let config_data = include_bytes!("../config.json");
+    match serde_json_core::from_slice(config_data) {
+        Ok((config, _)) => Ok(config),
+        Err(e) => {
+            Err(e)
+        }
+    }
+}
+
 #[embassy_executor::main]
 async fn main(spawner: Spawner) {
     init_global_allocator();
+
+    let config = load_config().unwrap();
 
     let repository = Rc::from(RefCell::from(MetricsRepository::new()));
 
@@ -115,7 +128,8 @@ async fn main(spawner: Spawner) {
         let controller: ExternalController<_, 10> = ExternalController::new(bt_device.unwrap());
         unwrap!(spawner.spawn(sbmeter_importer_task(Importer::new(
             controller,
-            repository.clone()
+            repository.clone(),
+            &config
         ))));
     }
 

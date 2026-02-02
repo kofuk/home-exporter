@@ -1,10 +1,11 @@
 extern crate alloc;
 
-use crate::repository::MetricsRepository;
+use crate::repository::{MetricsRepository};
 use alloc::rc::Rc;
 use core::cell::RefCell;
 use defmt::info;
 use trouble_host::prelude::*;
+use heapless::{String,Vec};
 
 #[derive(Debug)]
 pub struct ThermoHygroData {
@@ -89,11 +90,23 @@ fn extract_local_name(adv_data: &[u8]) -> Option<&str> {
 
 pub struct ScanHandler {
     repository: Rc<RefCell<MetricsRepository>>,
+    filter_addr: Option<BdAddr>
 }
 
 impl ScanHandler {
     pub fn new(repository: Rc<RefCell<MetricsRepository>>) -> Self {
-        Self { repository }
+        Self { repository, filter_addr: None }
+    }
+
+    pub fn set_target_mac_addr(&mut self, addr: &String<17>) -> Result<(), &'static str> {
+        let parts: Vec<&str, 6> = addr.split(':').collect();
+        if parts.len() != 6 {
+            return Err("Error parsing mac address")
+        }
+        let parts: Vec<u8, 6> = parts.iter().map(|e| u8::from_str_radix(e, 16).unwrap_or(0)).collect();
+        self.filter_addr = Some(BdAddr::new([parts[5], parts[4], parts[3], parts[2], parts[1], parts[0]]));
+
+        Ok(())
     }
 
     fn process_report(&self, addr: BdAddr, rssi: i8, data: &[u8]) {
@@ -107,8 +120,7 @@ impl ScanHandler {
         let (company_id, mfg_data) = manufacturer_data;
 
         // Mac Address (littele endian)
-        // TODO: Load config file and use target address from there
-        if let Some(target_addr) = Some(&BdAddr::new([0x05, 0x04, 0x03, 0x02, 0x01, 0x00])) {
+        if let Some(target_addr) = &self.filter_addr {
             if addr != *target_addr {
                 return;
             }

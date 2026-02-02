@@ -1,5 +1,5 @@
 mod config;
 mod metrics;
 
-pub use config::ConfigRepository;
+pub use config::Config;
 pub use metrics::MetricsRepository;
