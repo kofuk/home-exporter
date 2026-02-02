@@ -1,3 +1,5 @@
+extern crate alloc;
+
 use crate::importer::sbmeter::adv::ScanHandler;
 use bt_hci::cmd::le::{LeSetScanEnable, LeSetScanParams};
 use bt_hci::controller::ControllerCmdSync;

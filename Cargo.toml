@@ -54,6 +54,12 @@ trouble-host = { version = "0.5.1", features = ["scan", "default-packet-pool-mtu
 bt-hci = { version = "0.6", default-features = false, features = ["defmt"] }
 linked_list_allocator = "0.10.5"
 
+[features]
+default = ["sbmeter"]
+bluetooth = []
+wifi = []
+sbmeter = ["bluetooth"]
+
 [profile.release]
 # Enable generation of debug symbols even on release builds
 debug = true
