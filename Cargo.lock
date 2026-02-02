@@ -1112,6 +1112,7 @@ dependencies = [
  "embassy-executor",
  "embassy-futures",
  "embassy-net",
+ "embassy-net-driver-channel",
  "embassy-net-wiznet",
  "embassy-rp",
  "embassy-sync",

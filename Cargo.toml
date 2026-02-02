@@ -53,6 +53,13 @@ embedded-sdmmc = "0.7.0"
 trouble-host = { version = "0.5.1", features = ["scan", "default-packet-pool-mtu-128"] }
 bt-hci = { version = "0.6", default-features = false, features = ["defmt"] }
 linked_list_allocator = "0.10.5"
+embassy-net-driver-channel = "0.3.2"
+
+[features]
+default = ["sbmeter"]
+bluetooth = []
+wifi = []
+sbmeter = ["bluetooth"]
 
 [profile.release]
 # Enable generation of debug symbols even on release builds

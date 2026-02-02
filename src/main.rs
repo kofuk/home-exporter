@@ -4,14 +4,18 @@
 extern crate alloc;
 
 use core::ptr::addr_of_mut;
+use cyw43::bluetooth::BtDriver;
+use cyw43::{Control, Runner};
 use cyw43_pio::{PioSpi, RM2_CLOCK_DIVIDER};
 use defmt::*;
 use embassy_executor::Spawner;
+use embassy_net_wiznet::Device;
 use embassy_rp::bind_interrupts;
 use embassy_rp::gpio::{Level, Output};
 use embassy_rp::peripherals::{DMA_CH0, PIO0};
 use embassy_rp::pio::{InterruptHandler, Pio};
-use home_exporter::importer::sbmeter::bluetooth::run;
+#[cfg(feature = "sbmeter")]
+use home_exporter::importer::sbmeter as sbmeter_collector;
 use linked_list_allocator::LockedHeap;
 use static_cell::StaticCell;
 use trouble_host::prelude::ExternalController;
@@ -41,18 +45,16 @@ async fn cyw43_task(
     runner.run().await
 }
 
-#[embassy_executor::main]
-async fn main(spawner: Spawner) {
-    init_global_allocator();
-
+#[cfg(any(feature = "bluetooth", feature = "wifi"))]
+async fn init_net_device(
+    spawner: Spawner,
+) -> (Device<'static>, Option<BtDriver<'static>>, Control<'static>) {
     let p = embassy_rp::init(Default::default());
 
-    let (fw, clm, btfw) = {
-        let fw = include_bytes!("../firmware/43439A0.bin");
-        let clm = include_bytes!("../firmware/43439A0_clm.bin");
-        let btfw = include_bytes!("../firmware/43439A0_btfw.bin");
-        (fw, clm, btfw)
-    };
+    let fw = include_bytes!("../firmware/43439A0.bin");
+    let clm = include_bytes!("../firmware/43439A0_clm.bin");
+    #[cfg(feature = "bluetooth")]
+    let btfw = include_bytes!("../firmware/43439A0_btfw.bin");
 
     let pwr = Output::new(p.PIN_23, Level::Low);
     let cs = Output::new(p.PIN_25, Level::High);
@@ -70,12 +72,35 @@ async fn main(spawner: Spawner) {
 
     static STATE: StaticCell<cyw43::State> = StaticCell::new();
     let state = STATE.init(cyw43::State::new());
-    let (_net_device, bt_device, mut control, runner) =
-        cyw43::new_with_bluetooth(state, pwr, spi, fw, btfw).await;
+
+    #[cfg(feature = "bluetooth")]
+    let (net_device, bt_device, mut control, runner) = {
+        let (net_device, bt_device, control, runner) =
+            cyw43::new_with_bluetooth(state, pwr, spi, fw, btfw).await;
+        (net_device, Some(bt_device), control, runner)
+    };
+    #[cfg(feature = "wifi")]
+    let (net_device, bt_device, mut control, runner) = {
+        let (net_device, control, runner) = cyw43::new(state, pwr, spi, fw).await;
+        (net_device, None, control, runner)
+    };
+
     unwrap!(spawner.spawn(cyw43_task(runner)));
     control.init(clm).await;
 
-    let controller: ExternalController<_, 10> = ExternalController::new(bt_device);
+    return (net_device, bt_device, control);
+}
 
-    run(controller).await;
+#[embassy_executor::main]
+async fn main(spawner: Spawner) {
+    init_global_allocator();
+
+    #[cfg(any(feature = "bluetooth", feature = "wifi"))]
+    let (net_device, bt_device, control) = init_net_device(spawner).await;
+
+    #[cfg(feature = "bluetooth")]
+    let controller: ExternalController<_, 10> = ExternalController::new(bt_device.unwrap());
+
+    #[cfg(feature = "sbmeter")]
+    sbmeter_collector::run(controller).await;
 }
