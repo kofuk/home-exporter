@@ -62,10 +62,6 @@ wifi = []
 sbmeter = ["bluetooth"]
 remote-write = ["wifi"]
 
-[profile.release]
-# Enable generation of debug symbols even on release builds
-debug = true
-
 [package.metadata.embassy]
 build = [
   { target = "thumbv8m.main-none-eabihf", artifact-dir = "out" }
