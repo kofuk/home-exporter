@@ -51,9 +51,7 @@ async fn sbmeter_importer_task(importer: Importer) {
 }
 
 #[embassy_executor::task]
-async fn cyw43_task(
-    runner: cyw43::Runner<'static, Output<'static>, PioSpi<'static, PIO0, 0, DMA_CH0>>,
-) -> ! {
+async fn cyw43_task(runner: cyw43::Runner<'static, Output<'static>, PioSpi<'static, PIO0, 0, DMA_CH0>>) -> ! {
     runner.run().await
 }
 
@@ -116,8 +114,7 @@ async fn main(spawner: Spawner) {
 
     #[cfg(feature = "bluetooth")]
     let (net_device, bt_device, mut control, runner) = {
-        let (net_device, bt_device, control, runner) =
-            cyw43::new_with_bluetooth(state, pwr, spi, fw, btfw).await;
+        let (net_device, bt_device, control, runner) = cyw43::new_with_bluetooth(state, pwr, spi, fw, btfw).await;
         (net_device, Some(bt_device), control, runner)
     };
     #[cfg(not(feature = "bluetooth"))]
@@ -146,22 +143,14 @@ async fn main(spawner: Spawner) {
     #[cfg(feature = "wifi")]
     static RESOURCES: StaticCell<StackResources<5>> = StaticCell::new();
     #[cfg(feature = "wifi")]
-    let (net_stack, runner) = embassy_net::new(
-        net_device,
-        net_config,
-        RESOURCES.init(StackResources::new()),
-        seed,
-    );
+    let (net_stack, runner) = embassy_net::new(net_device, net_config, RESOURCES.init(StackResources::new()), seed);
 
     #[cfg(feature = "wifi")]
     unwrap!(spawner.spawn(net_task(runner)));
 
     #[cfg(feature = "wifi")]
     while let Err(_) = control
-        .join(
-            &config.wifi.ssid,
-            JoinOptions::new(config.wifi.password.as_bytes()),
-        )
+        .join(&config.wifi.ssid, JoinOptions::new(config.wifi.password.as_bytes()))
         .await
     {
         info!("Failed to join WiFi network");
@@ -185,13 +174,9 @@ async fn main(spawner: Spawner) {
         NetworkingStack::new(spawner, controller, net_stack).await,
     ));
     #[cfg(not(feature = "wifi"))]
-    let stack = Rc::from(RefCell::from(
-        NetworkingStack::new(spawner, controller).await,
-    ));
+    let stack = Rc::from(RefCell::from(NetworkingStack::new(spawner, controller).await));
     #[cfg(not(feature = "bluetooth"))]
-    let stack = Rc::from(RefCell::from(
-        NetworkingStack::new(spawner, net_stack).await,
-    ));
+    let stack = Rc::from(RefCell::from(NetworkingStack::new(spawner, net_stack).await));
 
     // End of no-refactor zone
 

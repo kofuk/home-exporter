@@ -35,10 +35,7 @@ fn parse_thermo_hygro_data(data: &[u8]) -> Option<ThermoHygroData> {
     // Humidity
     let humidity = humidity_byte & 0x7F;
 
-    Some(ThermoHygroData {
-        temperature,
-        humidity,
-    })
+    Some(ThermoHygroData { temperature, humidity })
 }
 
 fn extract_manufacturer_data(adv_data: &[u8]) -> Option<(u16, &[u8])> {
@@ -57,8 +54,7 @@ fn extract_manufacturer_data(adv_data: &[u8]) -> Option<(u16, &[u8])> {
 
             if data_end <= adv_data.len() && data_end - data_start >= 2 {
                 // Company ID は Little Endian
-                let company_id =
-                    u16::from_le_bytes([adv_data[data_start], adv_data[data_start + 1]]);
+                let company_id = u16::from_le_bytes([adv_data[data_start], adv_data[data_start + 1]]);
                 let manufacturer_data = &adv_data[data_start + 2..data_end];
                 return Some((company_id, manufacturer_data));
             }
@@ -106,10 +102,7 @@ impl ScanHandler {
         if parts.len() != 6 {
             return Err("Error parsing mac address");
         }
-        let parts: Vec<u8, 6> = parts
-            .iter()
-            .map(|e| u8::from_str_radix(e, 16).unwrap_or(0))
-            .collect();
+        let parts: Vec<u8, 6> = parts.iter().map(|e| u8::from_str_radix(e, 16).unwrap_or(0)).collect();
         self.filter_addr = Some(BdAddr::new([
             parts[5], parts[4], parts[3], parts[2], parts[1], parts[0],
         ]));
@@ -142,10 +135,7 @@ impl ScanHandler {
 
         match parse_thermo_hygro_data(mfg_data) {
             Some(data) => {
-                info!(
-                    "Temperature: {}°C, Humidity: {}%",
-                    data.temperature, data.humidity
-                );
+                info!("Temperature: {}°C, Humidity: {}%", data.temperature, data.humidity);
                 let mut repository = self.repository.borrow_mut();
                 repository.set_temperature(data.temperature);
                 repository.set_humidity(data.humidity);

@@ -22,10 +22,7 @@ impl Net {
         Net { net_stack }
     }
 
-    pub fn new_tcp_client<'a>(
-        &'a self,
-        state: &'a TcpClientState,
-    ) -> etc::TcpClient<'a, 1, 4096, 4096> {
+    pub fn new_tcp_client<'a>(&'a self, state: &'a TcpClientState) -> etc::TcpClient<'a, 1, 4096, 4096> {
         etc::TcpClient::new(self.net_stack, &state.state)
     }
 }

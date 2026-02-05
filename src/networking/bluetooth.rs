@@ -79,29 +79,19 @@ pub struct Bluetooth {
 
 impl Bluetooth {
     pub fn new(controller: ExternalController<BtDriver<'static>, 10>, spawner: Spawner) -> Self {
-        static RESOURCES: StaticCell<
-            HostResources<DefaultPacketPool, CONNECTIONS_MAX, L2CAP_CHANNELS_MAX>,
-        > = StaticCell::new();
-        static STACK: StaticCell<
-            Stack<'static, ExternalController<BtDriver<'static>, 10>, DefaultPacketPool>,
-        > = StaticCell::new();
-        static SCAN_CHANNEL: StaticCell<
-            Channel<CriticalSectionRawMutex, ScanResult, SCAN_QUEUE_SIZE>,
-        > = StaticCell::new();
+        static RESOURCES: StaticCell<HostResources<DefaultPacketPool, CONNECTIONS_MAX, L2CAP_CHANNELS_MAX>> =
+            StaticCell::new();
+        static STACK: StaticCell<Stack<'static, ExternalController<BtDriver<'static>, 10>, DefaultPacketPool>> =
+            StaticCell::new();
+        static SCAN_CHANNEL: StaticCell<Channel<CriticalSectionRawMutex, ScanResult, SCAN_QUEUE_SIZE>> =
+            StaticCell::new();
 
         let resources: &'static mut HostResources<_, _, _> = RESOURCES.init(HostResources::new());
         let scan_channel = SCAN_CHANNEL.init(Channel::new());
         let stack = STACK.init(trouble_host::new(controller, resources));
-        let Host {
-            central, runner, ..
-        } = stack.build();
+        let Host { central, runner, .. } = stack.build();
 
-        spawner.must_spawn(bluetooth_task(
-            runner,
-            ScanHandler {
-                channel: scan_channel,
-            },
-        ));
+        spawner.must_spawn(bluetooth_task(runner, ScanHandler { channel: scan_channel }));
 
         Bluetooth {
             scanner: Scanner::new(central),
@@ -122,9 +112,7 @@ impl Bluetooth {
 
         loop {
             let session = self.scanner.scan(&config).await.unwrap();
-            while let Ok(result) =
-                embassy_time::with_timeout(Duration::from_secs(3), self.scan_channel.receive())
-                    .await
+            while let Ok(result) = embassy_time::with_timeout(Duration::from_secs(3), self.scan_channel.receive()).await
             {
                 callback(result);
             }

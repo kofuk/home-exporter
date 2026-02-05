@@ -37,11 +37,8 @@ impl Importer {
             .borrow_mut()
             .bluetooth
             .start_scan(|scan_result: ScanResult| {
-                self.scan_handler.process_report(
-                    scan_result.addr,
-                    scan_result.rssi,
-                    &scan_result.data,
-                );
+                self.scan_handler
+                    .process_report(scan_result.addr, scan_result.rssi, &scan_result.data);
             })
             .await;
     }
