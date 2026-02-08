@@ -17,13 +17,16 @@ use embassy_rp::clocks::RoscRng;
 use embassy_rp::gpio::{Level, Output};
 use embassy_rp::peripherals::{DMA_CH0, PIO0};
 use embassy_rp::pio::{InterruptHandler, Pio};
+#[cfg(feature = "remote-write")]
+use home_exporter::exporter::remote_write::Exporter as RemoteWriteExporter;
 #[cfg(feature = "sbmeter")]
-use home_exporter::importer::sbmeter::Importer;
+use home_exporter::importer::sbmeter::Importer as SbmeterImporter;
 use home_exporter::networking::NetworkingStack;
 use home_exporter::repository::Config;
 use home_exporter::repository::MetricsRepository;
 use linked_list_allocator::LockedHeap;
 use static_cell::StaticCell;
+#[cfg(feature = "bluetooth")]
 use trouble_host::prelude::ExternalController;
 use {defmt_rtt as _, panic_probe as _};
 
@@ -46,8 +49,14 @@ bind_interrupts!(struct Irqs {
 
 #[cfg(feature = "sbmeter")]
 #[embassy_executor::task]
-async fn sbmeter_importer_task(importer: Importer) {
+async fn sbmeter_importer_task(importer: SbmeterImporter) {
     importer.run().await
+}
+
+#[cfg(feature = "remote-write")]
+#[embassy_executor::task]
+async fn remote_write_exporter_task(exporter: RemoteWriteExporter) {
+    exporter.run().await
 }
 
 #[embassy_executor::task]
@@ -125,9 +134,9 @@ async fn main(spawner: Spawner) {
         (net_device, Some(bt_device), control, runner)
     };
     #[cfg(not(feature = "bluetooth"))]
-    let (net_device, bt_device, mut control, runner) = {
+    let (net_device, mut control, runner) = {
         let (net_device, control, runner) = cyw43::new(state, pwr, spi, fw).await;
-        (net_device, None, control, runner)
+        (net_device, control, runner)
     };
 
     #[cfg(any(feature = "wifi", feature = "bluetooth"))]
@@ -183,7 +192,16 @@ async fn main(spawner: Spawner) {
 
     #[cfg(feature = "sbmeter")]
     {
-        unwrap!(spawner.spawn(sbmeter_importer_task(Importer::new(
+        unwrap!(spawner.spawn(sbmeter_importer_task(SbmeterImporter::new(
+            stack.clone(),
+            repository.clone(),
+            &config
+        ))));
+    }
+
+    #[cfg(feature = "remote-write")]
+    {
+        unwrap!(spawner.spawn(remote_write_exporter_task(RemoteWriteExporter::new(
             stack.clone(),
             repository.clone(),
             &config
