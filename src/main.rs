@@ -4,7 +4,6 @@
 extern crate alloc;
 
 use alloc::rc::Rc;
-use core::cell::RefCell;
 use core::future::pending;
 use core::ptr::addr_of_mut;
 use cyw43::JoinOptions;
@@ -17,6 +16,8 @@ use embassy_rp::clocks::RoscRng;
 use embassy_rp::gpio::{Level, Output};
 use embassy_rp::peripherals::{DMA_CH0, PIO0};
 use embassy_rp::pio::{InterruptHandler, Pio};
+use embassy_sync::blocking_mutex::raw::NoopRawMutex;
+use embassy_sync::mutex::Mutex;
 #[cfg(feature = "remote-write")]
 use home_exporter::exporter::remote_write::Exporter as RemoteWriteExporter;
 #[cfg(feature = "sbmeter")]
@@ -24,6 +25,8 @@ use home_exporter::importer::sbmeter::Importer as SbmeterImporter;
 use home_exporter::networking::NetworkingStack;
 use home_exporter::repository::Config;
 use home_exporter::repository::MetricsRepository;
+#[cfg(feature = "ntp")]
+use home_exporter::time::Time;
 use linked_list_allocator::LockedHeap;
 use static_cell::StaticCell;
 #[cfg(feature = "bluetooth")]
@@ -69,6 +72,11 @@ async fn net_task(mut runner: embassy_net::Runner<'static, cyw43::NetDriver<'sta
     runner.run().await
 }
 
+#[embassy_executor::task]
+async fn time_sync_task(time: Rc<Mutex<NoopRawMutex, Time>>) {
+    Time::do_sync_loop(time.clone()).await;
+}
+
 fn load_config() -> Result<Config, serde_json_core::de::Error> {
     let config_data = include_bytes!("../config.json");
     match serde_json_core::from_slice(config_data) {
@@ -82,7 +90,7 @@ async fn main(spawner: Spawner) {
     init_global_allocator();
 
     let config = load_config().unwrap();
-    let repository = Rc::from(RefCell::from(MetricsRepository::new()));
+    let repository = Rc::from(Mutex::from(MetricsRepository::new()));
 
     let mut rng = RoscRng;
 
@@ -182,13 +190,21 @@ async fn main(spawner: Spawner) {
     };
 
     #[cfg(all(feature = "bluetooth", feature = "wifi"))]
-    let stack = Rc::from(RefCell::from(
-        NetworkingStack::new(spawner, controller, net_stack).await,
-    ));
+    let stack = Rc::from(Mutex::from(NetworkingStack::new(spawner, controller, net_stack).await));
     #[cfg(not(feature = "wifi"))]
-    let stack = Rc::from(RefCell::from(NetworkingStack::new(spawner, controller).await));
+    let stack = Rc::from(Mutex::from(NetworkingStack::new(spawner, controller).await));
     #[cfg(not(feature = "bluetooth"))]
-    let stack = Rc::from(RefCell::from(NetworkingStack::new(net_stack).await));
+    let stack = Rc::from(Mutex::from(NetworkingStack::new(net_stack).await));
+
+    #[cfg(feature = "ntp")]
+    let time = {
+        let time = Rc::from(Mutex::from(Time::new(stack.clone())));
+        if let Err(err) = time.lock().await.sync_once().await {
+            error!("Failed to sync time: {:?}", err)
+        };
+        unwrap!(spawner.spawn(time_sync_task(time.clone())));
+        time
+    };
 
     #[cfg(feature = "sbmeter")]
     {
@@ -204,6 +220,7 @@ async fn main(spawner: Spawner) {
         unwrap!(spawner.spawn(remote_write_exporter_task(RemoteWriteExporter::new(
             stack.clone(),
             repository.clone(),
+            time.clone(),
             &config
         ))));
     }

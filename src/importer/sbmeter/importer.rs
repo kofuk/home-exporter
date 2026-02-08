@@ -5,17 +5,18 @@ use crate::networking::NetworkingStack;
 use crate::networking::bluetooth::ScanResult;
 use crate::repository::{Config, MetricsRepository};
 use alloc::rc::Rc;
-use core::cell::RefCell;
+use embassy_sync::blocking_mutex::raw::NoopRawMutex;
+use embassy_sync::mutex::Mutex;
 
 pub struct Importer {
-    networking_stack: Rc<RefCell<NetworkingStack>>,
+    networking_stack: Rc<Mutex<NoopRawMutex, NetworkingStack>>,
     scan_handler: ScanHandler,
 }
 
 impl Importer {
     pub fn new(
-        networking_stack: Rc<RefCell<NetworkingStack>>,
-        repository: Rc<RefCell<MetricsRepository>>,
+        networking_stack: Rc<Mutex<NoopRawMutex, NetworkingStack>>,
+        repository: Rc<Mutex<NoopRawMutex, MetricsRepository>>,
         config: &Config,
     ) -> Self {
         let mut scan_handler = ScanHandler::new(repository);
@@ -34,11 +35,13 @@ impl Importer {
 
     pub async fn run(self) {
         self.networking_stack
-            .borrow_mut()
+            .lock()
+            .await
             .bluetooth
-            .start_scan(|scan_result: ScanResult| {
+            .start_scan(async |scan_result: ScanResult| {
                 self.scan_handler
-                    .process_report(scan_result.addr, scan_result.rssi, &scan_result.data);
+                    .process_report(scan_result.addr, scan_result.rssi, &scan_result.data)
+                    .await;
             })
             .await;
     }

@@ -24,6 +24,7 @@ impl NetworkingStack {
         #[cfg(feature = "bluetooth")] controller: ExternalController<BtDriver<'static>, 10>,
         #[cfg(feature = "wifi")] net_stack: Stack<'static>,
     ) -> Self {
+        #[cfg(feature = "wifi")]
         NetworkingStack {
             #[cfg(feature = "bluetooth")]
             bluetooth: Bluetooth::new(controller, spawner),

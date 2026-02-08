@@ -2,8 +2,8 @@ extern crate alloc;
 
 use crate::repository::MetricsRepository;
 use alloc::rc::Rc;
-use core::cell::RefCell;
 use defmt::info;
+use embassy_sync::{blocking_mutex::raw::NoopRawMutex, mutex::Mutex};
 use heapless::{String, Vec};
 use trouble_host::prelude::*;
 
@@ -85,12 +85,12 @@ fn extract_local_name(adv_data: &[u8]) -> Option<&str> {
 }
 
 pub struct ScanHandler {
-    repository: Rc<RefCell<MetricsRepository>>,
+    repository: Rc<Mutex<NoopRawMutex, MetricsRepository>>,
     filter_addr: Option<BdAddr>,
 }
 
 impl ScanHandler {
-    pub fn new(repository: Rc<RefCell<MetricsRepository>>) -> Self {
+    pub fn new(repository: Rc<Mutex<NoopRawMutex, MetricsRepository>>) -> Self {
         Self {
             repository,
             filter_addr: None,
@@ -110,7 +110,7 @@ impl ScanHandler {
         Ok(())
     }
 
-    pub fn process_report(&self, addr: BdAddr, rssi: i8, data: &[u8]) {
+    pub async fn process_report(&self, addr: BdAddr, rssi: i8, data: &[u8]) {
         let local_name = extract_local_name(data);
 
         let manufacturer_data = match extract_manufacturer_data(data) {
@@ -136,7 +136,7 @@ impl ScanHandler {
         match parse_thermo_hygro_data(mfg_data) {
             Some(data) => {
                 info!("Temperature: {}°C, Humidity: {}%", data.temperature, data.humidity);
-                let mut repository = self.repository.borrow_mut();
+                let mut repository = self.repository.lock().await;
                 repository.set_temperature(data.temperature);
                 repository.set_humidity(data.humidity);
             }

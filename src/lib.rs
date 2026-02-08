@@ -5,3 +5,5 @@ pub mod importer;
 #[cfg(any(feature = "bluetooth", feature = "wifi"))]
 pub mod networking;
 pub mod repository;
+#[cfg(feature = "ntp")]
+pub mod time;

@@ -8,6 +8,7 @@ publish = false
 
 [dependencies]
 bt-hci = { version = "0.6", default-features = false, features = ["defmt"] }
+chrono = { version = "0.4.43", default-features = false, features = ["defmt"] }
 cortex-m-rt = "0.7.0"
 cyw43 = { version = "0.6.0", features = ["defmt", "bluetooth", "firmware-logs"] }
 cyw43-pio = { version = "0.9.0", features = ["defmt"] }
@@ -31,8 +32,9 @@ trouble-host = { version = "0.5.1", features = ["scan", "default-packet-pool-mtu
 default = ["remote-write"]
 bluetooth = []
 wifi = []
+ntp = []
 sbmeter = ["bluetooth"]
-remote-write = ["wifi"]
+remote-write = ["wifi", "ntp"]
 
 [package.metadata.embassy]
 build = [

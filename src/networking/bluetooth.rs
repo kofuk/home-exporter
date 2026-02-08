@@ -101,7 +101,7 @@ impl Bluetooth {
 
     pub async fn start_scan<F>(&mut self, mut callback: F)
     where
-        F: FnMut(ScanResult),
+        F: AsyncFnMut(ScanResult),
     {
         let config = ScanConfig {
             active: false,
@@ -114,7 +114,7 @@ impl Bluetooth {
             let session = self.scanner.scan(&config).await.unwrap();
             while let Ok(result) = embassy_time::with_timeout(Duration::from_secs(3), self.scan_channel.receive()).await
             {
-                callback(result);
+                callback(result).await;
             }
 
             drop(session);
