@@ -1,4 +1,5 @@
 use defmt::*;
+use embassy_net::dns::DnsSocket;
 use embassy_net::tcp::client as etc;
 use embassy_net::udp::{self as eu, PacketMetadata};
 use embassy_net::{IpAddress, Stack};
@@ -64,5 +65,9 @@ impl Net {
                 Err("DNS query failed")
             }
         }
+    }
+
+    pub fn get_dns_client<'a>(&'a self) -> DnsSocket<'a> {
+        DnsSocket::new(self.net_stack)
     }
 }

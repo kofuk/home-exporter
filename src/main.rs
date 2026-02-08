@@ -62,16 +62,19 @@ async fn remote_write_exporter_task(exporter: RemoteWriteExporter) {
     exporter.run().await
 }
 
+#[cfg(any(feature = "wifi", feature = "bluetooth"))]
 #[embassy_executor::task]
 async fn cyw43_task(runner: cyw43::Runner<'static, Output<'static>, PioSpi<'static, PIO0, 0, DMA_CH0>>) -> ! {
     runner.run().await
 }
 
+#[cfg(feature = "wifi")]
 #[embassy_executor::task]
 async fn net_task(mut runner: embassy_net::Runner<'static, cyw43::NetDriver<'static>>) -> ! {
     runner.run().await
 }
 
+#[cfg(feature = "ntp")]
 #[embassy_executor::task]
 async fn time_sync_task(time: Rc<Mutex<NoopRawMutex, Time>>) {
     Time::do_sync_loop(time.clone()).await;

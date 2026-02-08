@@ -14,15 +14,17 @@ cyw43 = { version = "0.6.0", features = ["defmt", "bluetooth", "firmware-logs"] 
 cyw43-pio = { version = "0.9.0", features = ["defmt"] }
 defmt = "1.0.1"
 defmt-rtt = "1.0.0"
-embassy-sync = { version = "0.7.2", features = ["defmt"] }
 embassy-executor = { version = "0.9.0", features = ["arch-cortex-m", "executor-thread", "executor-interrupt", "defmt"] }
-embassy-net-driver-channel = "0.3.2"
-embassy-time = { version = "0.5.0", features = ["defmt", "defmt-timestamp-uptime"] }
-embassy-rp = { version = "0.9.0", features = ["defmt", "unstable-pac", "time-driver", "critical-section-impl", "rp235xa", "binary-info"] }
 embassy-net = { version = "0.8.0", features = ["defmt", "icmp", "tcp", "udp", "raw", "dhcpv4", "medium-ethernet", "dns"] }
+embassy-net-driver-channel = "0.3.2"
+embassy-rp = { version = "0.9.0", features = ["defmt", "unstable-pac", "time-driver", "critical-section-impl", "rp235xa", "binary-info"] }
+embassy-sync = { version = "0.7.2", features = ["defmt"] }
+embassy-time = { version = "0.5.0", features = ["defmt", "defmt-timestamp-uptime"] }
+embedded-nal-async = "0.9.0"
 heapless = { version = "0.9", features = ["serde"] }
 linked_list_allocator = "0.10.5"
 panic-probe = { version = "1.0.0", features = ["print-defmt"] }
+reqwless = { version = "0.14.0", default-features = false, features = ["defmt", "embedded-tls"] }
 serde = { version = "1.0.203", default-features = false, features = ["derive"] }
 serde-json-core = "0.5.1"
 static_cell = "2.1"
