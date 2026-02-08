@@ -83,34 +83,41 @@ async fn main(spawner: Spawner) {
     let p = embassy_rp::init(Default::default());
 
     #[cfg(any(feature = "wifi", feature = "bluetooth"))]
-    let fw = include_bytes!("../firmware/43439A0.bin");
-    #[cfg(any(feature = "wifi", feature = "bluetooth"))]
-    let clm = include_bytes!("../firmware/43439A0_clm.bin");
+    let (fw, clm) = {
+        let fw = include_bytes!("../firmware/43439A0.bin");
+        let clm = include_bytes!("../firmware/43439A0_clm.bin");
+        (fw, clm)
+    };
     #[cfg(feature = "bluetooth")]
     let btfw = include_bytes!("../firmware/43439A0_btfw.bin");
 
-    #[cfg(any(feature = "wifi", feature = "bluetooth"))]
-    let pwr = Output::new(p.PIN_23, Level::Low);
-    #[cfg(any(feature = "wifi", feature = "bluetooth"))]
-    let cs = Output::new(p.PIN_25, Level::High);
+    // should we always place this in main function?
     #[cfg(any(feature = "wifi", feature = "bluetooth"))]
     let mut pio = Pio::new(p.PIO0, Irqs);
-    #[cfg(any(feature = "wifi", feature = "bluetooth"))]
-    let spi = PioSpi::new(
-        &mut pio.common,
-        pio.sm0,
-        RM2_CLOCK_DIVIDER,
-        pio.irq0,
-        cs,
-        p.PIN_24,
-        p.PIN_29,
-        p.DMA_CH0,
-    );
 
     #[cfg(any(feature = "wifi", feature = "bluetooth"))]
-    static STATE: StaticCell<cyw43::State> = StaticCell::new();
-    #[cfg(any(feature = "wifi", feature = "bluetooth"))]
-    let state = STATE.init(cyw43::State::new());
+    let (pwr, spi, state) = {
+        let pwr = Output::new(p.PIN_23, Level::Low);
+        let cs = Output::new(p.PIN_25, Level::High);
+        let spi = PioSpi::new(
+            &mut pio.common,
+            pio.sm0,
+            RM2_CLOCK_DIVIDER,
+            pio.irq0,
+            cs,
+            p.PIN_24,
+            p.PIN_29,
+            p.DMA_CH0,
+        );
+
+        let state = {
+            static STATE: StaticCell<cyw43::State> = StaticCell::new();
+            let state = STATE.init(cyw43::State::new());
+            state
+        };
+
+        (pwr, spi, state)
+    };
 
     #[cfg(feature = "bluetooth")]
     let (net_device, bt_device, mut control, runner) = {
@@ -124,50 +131,46 @@ async fn main(spawner: Spawner) {
     };
 
     #[cfg(any(feature = "wifi", feature = "bluetooth"))]
-    unwrap!(spawner.spawn(cyw43_task(runner)));
-    #[cfg(any(feature = "wifi", feature = "bluetooth"))]
-    control.init(clm).await;
-    #[cfg(any(feature = "wifi", feature = "bluetooth"))]
-    control
-        .set_power_management(cyw43::PowerManagementMode::PowerSave)
-        .await;
+    {
+        unwrap!(spawner.spawn(cyw43_task(runner)));
+        control.init(clm).await;
+        control
+            .set_power_management(cyw43::PowerManagementMode::PowerSave)
+            .await;
+    };
 
     #[cfg(feature = "bluetooth")]
     let controller: ExternalController<_, 10> = ExternalController::new(bt_device.unwrap());
 
-    #[cfg(feature = "wifi")]
-    let net_config = NetConfig::dhcpv4(Default::default());
-    #[cfg(feature = "wifi")]
-    let seed = rng.next_u64();
+    // End of no-refactor zone
 
     #[cfg(feature = "wifi")]
-    static RESOURCES: StaticCell<StackResources<5>> = StaticCell::new();
-    #[cfg(feature = "wifi")]
-    let (net_stack, runner) = embassy_net::new(net_device, net_config, RESOURCES.init(StackResources::new()), seed);
+    let net_stack = {
+        let net_config = NetConfig::dhcpv4(Default::default());
+        let seed = rng.next_u64();
 
-    #[cfg(feature = "wifi")]
-    unwrap!(spawner.spawn(net_task(runner)));
+        static RESOURCES: StaticCell<StackResources<5>> = StaticCell::new();
+        let (net_stack, runner) = embassy_net::new(net_device, net_config, RESOURCES.init(StackResources::new()), seed);
 
-    #[cfg(feature = "wifi")]
-    while let Err(_) = control
-        .join(&config.wifi.ssid, JoinOptions::new(config.wifi.password.as_bytes()))
-        .await
-    {
-        info!("Failed to join WiFi network");
-    }
+        unwrap!(spawner.spawn(net_task(runner)));
 
-    #[cfg(feature = "wifi")]
-    info!("Waiing for network link up...");
-    #[cfg(feature = "wifi")]
-    net_stack.wait_link_up().await;
+        while let Err(_) = control
+            .join(&config.wifi.ssid, JoinOptions::new(config.wifi.password.as_bytes()))
+            .await
+        {
+            info!("Failed to join WiFi network");
+        }
 
-    #[cfg(feature = "wifi")]
-    info!("Waiting for DHCP...");
-    #[cfg(feature = "wifi")]
-    net_stack.wait_config_up().await;
+        info!("Waiing for network link up...");
+        net_stack.wait_link_up().await;
 
-    #[cfg(feature = "wifi")]
-    info!("Network ready!");
+        info!("Waiting for DHCP...");
+        net_stack.wait_config_up().await;
+
+        info!("Network ready!");
+
+        net_stack
+    };
 
     #[cfg(all(feature = "bluetooth", feature = "wifi"))]
     let stack = Rc::from(RefCell::from(
@@ -177,8 +180,6 @@ async fn main(spawner: Spawner) {
     let stack = Rc::from(RefCell::from(NetworkingStack::new(spawner, controller).await));
     #[cfg(not(feature = "bluetooth"))]
     let stack = Rc::from(RefCell::from(NetworkingStack::new(spawner, net_stack).await));
-
-    // End of no-refactor zone
 
     #[cfg(feature = "sbmeter")]
     {
