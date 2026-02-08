@@ -188,7 +188,7 @@ async fn main(spawner: Spawner) {
     #[cfg(not(feature = "wifi"))]
     let stack = Rc::from(RefCell::from(NetworkingStack::new(spawner, controller).await));
     #[cfg(not(feature = "bluetooth"))]
-    let stack = Rc::from(RefCell::from(NetworkingStack::new(spawner, net_stack).await));
+    let stack = Rc::from(RefCell::from(NetworkingStack::new(net_stack).await));
 
     #[cfg(feature = "sbmeter")]
     {

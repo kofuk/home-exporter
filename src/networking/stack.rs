@@ -1,9 +1,13 @@
+#[cfg(feature = "bluetooth")]
 use crate::networking::bluetooth::Bluetooth;
 #[cfg(feature = "wifi")]
 use crate::networking::net::Net;
+#[cfg(feature = "bluetooth")]
 use cyw43::bluetooth::BtDriver;
+#[cfg(feature = "bluetooth")]
 use embassy_executor::Spawner;
 use embassy_net::Stack;
+#[cfg(feature = "bluetooth")]
 use trouble_host::prelude::ExternalController;
 use {defmt_rtt as _, panic_probe as _};
 
@@ -16,7 +20,7 @@ pub struct NetworkingStack {
 
 impl NetworkingStack {
     pub async fn new(
-        spawner: Spawner,
+        #[cfg(feature = "bluetooth")] spawner: Spawner,
         #[cfg(feature = "bluetooth")] controller: ExternalController<BtDriver<'static>, 10>,
         #[cfg(feature = "wifi")] net_stack: Stack<'static>,
     ) -> Self {
