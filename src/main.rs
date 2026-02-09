@@ -205,6 +205,7 @@ async fn main(spawner: Spawner) {
         if let Err(err) = time.lock().await.sync_once().await {
             error!("Failed to sync time: {:?}", err)
         };
+        info!("Time synchronized");
         unwrap!(spawner.spawn(time_sync_task(time.clone())));
         time
     };
